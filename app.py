@@ -5,15 +5,14 @@ import numpy as np
 from datasets import load_dataset
 from transformers import pipeline
 from sentence_transformers import SentenceTransformer
-from transformers import T5ForConditionalGeneration, T5Tokenizer
 
 # Load a subset of the LEDGAR dataset for demonstration
 dataset = load_dataset("lex_glue", "ledgar", split="train[:500]")
 documents = [entry["text"] for entry in dataset]
 
 # Load the retrieval model
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-retriever_model = SentenceTransformer('sentence-transformers/msmarco-distilbert-base-v3').to(device)
+device = torch.device("cpu")  # Force use of CPU as no GPU is available
+retriever_model = SentenceTransformer('sentence-transformers/msmarco-distilbert-base-v3', device=device)
 doc_embeddings = retriever_model.encode(documents, convert_to_tensor=True).cpu().numpy()
 
 # Initialize FAISS index
@@ -28,8 +27,8 @@ def retrieve_documents(query, top_k=5):
     results = [{"text": documents[idx], "score": distances[0][i]} for i, idx in enumerate(indices[0])]
     return results
 
-# Load summarization model, set to GPU if available
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=0 if torch.cuda.is_available() else -1)
+# Load summarization model, set to CPU
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=-1)  # -1 means use CPU
 
 # Summarization function with dynamic length
 def summarize_text(text):
