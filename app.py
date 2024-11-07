@@ -10,10 +10,12 @@ from sentence_transformers import SentenceTransformer
 dataset = load_dataset("lex_glue", "ledgar", split="train[:500]")
 documents = [entry["text"] for entry in dataset]
 
+# Check if GPU is available (for Colab)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # Load the retrieval model
-device = torch.device("cpu")  # Force use of CPU as no GPU is available
 retriever_model = SentenceTransformer('sentence-transformers/msmarco-distilbert-base-v3', device=device)
-doc_embeddings = retriever_model.encode(documents, convert_to_tensor=True).cpu().numpy()
+doc_embeddings = retriever_model.encode(documents, convert_to_tensor=True).cpu().numpy()  # Move to CPU after encoding if on GPU
 
 # Initialize FAISS index
 dimension = doc_embeddings.shape[1]
@@ -27,8 +29,8 @@ def retrieve_documents(query, top_k=5):
     results = [{"text": documents[idx], "score": distances[0][i]} for i, idx in enumerate(indices[0])]
     return results
 
-# Load summarization model, set to CPU
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=-1)  # -1 means use CPU
+# Load summarization model, set to GPU if available, otherwise fallback to CPU
+summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=0 if torch.cuda.is_available() else -1)
 
 # Summarization function with dynamic length
 def summarize_text(text):
